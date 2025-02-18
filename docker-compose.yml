@@ -1,0 +1,113 @@
+version: '3.3'
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=appdb
+      - REDIS_HOST=redis
+    depends_on:
+      - db
+      # - redis
+    networks:
+      - app-network
+
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: appdb
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./backend/db-init.sql:/docker-entrypoint-initdb.d/db-init.sql  # Add this line
+    networks:
+      - app-network
+
+  # redis:
+  #   image: redis:alpine
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - app-network
+
+volumes:
+  db-data:
+  redis-data:
+
+networks:
+  app-network:
+
+
+
+
+
+
+# version: '3.3'
+# services:
+#   frontend:
+#     build: ./frontend
+#     ports:
+#       - "80:80"
+#     depends_on:
+#       - backend
+#     networks:
+#       - app-network
+    
+
+#   backend:
+#     build: ./backend
+#     ports:
+#       - "3000:3000"
+#     environment:
+#       - MYSQL_HOST=external-db-host 
+#       - MYSQL_USER=root
+#       - MYSQL_PASSWORD=password
+#       - MYSQL_DATABASE=appdb
+#       - REDIS_HOST=redis
+#     depends_on:
+#       - redis
+#     networks:
+#       - app-network
+
+#   redis:
+#     image: redis:alpine
+#     volumes:
+#       - redis-data:/data
+#     networks:
+#       - app-network
+
+#   db:
+#     image: mysql:5.7
+#     environment:
+#       MYSQL_ROOT_PASSWORD: password
+#       MYSQL_DATABASE: appdb
+#     volumes:
+#       - db-data:/var/lib/mysql
+#     networks:
+#       - app-network
+
+#   redis:
+#     image: redis:alpine
+#     volumes:
+#       - redis-data:/data
+#     networks:
+#       - app-network 
+
+# volumes:
+#   redis-data:
+
+# networks:
+#   app-network:
