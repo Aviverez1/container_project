@@ -30,36 +30,86 @@ db.connect((err) => {
     console.log('Connected to MySQL database');
 });
 
+// Redis connection
 // const redisClient = redis.createClient({
 //     host: 'redis',
 //     port: 6379,
 // });
+// Redis connection
+const redisClient = redis.createClient({
+    url: `redis://${process.env.REDIS_HOST || 'localhost'}:6379`
+});
 
-// redisClient.on('connect', () => {
-//     console.log('Connected to Redis');
-// });
+redisClient.on('connect', () => {
+    console.log('Connected to Redis');
+});
+
+redisClient.on('end', () => {
+    console.log('Redis connection closed');
+});
+
+redisClient.on('error', (err) => {
+    console.error('Redis error:', err);
+});
+
+redisClient.connect().catch((err) => {
+    console.error('Failed to connect to Redis:', err);
+});
 
 // API Endpoints - for front
 app.get('/api/message', (req, res) => {
     res.json({ message: 'Hello from the backend!' });
 });
 
-// app.get('/api/cache', async (req, res) => {
-//     const cacheKey = 'cached_message';
+// GET /api/cache → Checks Redis and returns a cached message or fetches from the database
+app.get('/api/cache', async (req, res) => {
+    const cacheKey = 'cached_message';
 
-//     redisClient.get(cacheKey, async (err, data) => {
-//         if (err) throw err;
+    try {
+        // Check Redis for cached data
+        const cachedData = await redisClient.get(cacheKey);
 
-//         if (data) {
-//             res.json({ message: JSON.parse(data) });
-//         } else {
-//             const message = { message: 'Fetched from database' };
-//             redisClient.setex(cacheKey, 3600, JSON.stringify(message)); // Cache for 1 hour
-//             res.json(message);
-//         }
-//     });
-// });
+        if (cachedData) {
+            // If cached data exists, return it
+            return res.json({ message: JSON.parse(cachedData) });
+        } else {
+            // If no cached data, fetch from the database
+            const sql = 'SELECT text FROM messages ORDER BY created_at DESC LIMIT 1';
+            db.query(sql, (err, results) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    return res.status(500).json({ error: 'Failed to fetch from database' });
+                }
 
+                if (results.length > 0) {
+                    const message = results[0].text;
+
+                    // Cache the message in Redis for 1 hour
+                    redisClient.setEx(cacheKey, 30, JSON.stringify(message));
+
+                    // Return the message
+                    return res.json({ message });
+                } else {
+                    return res.json({ message: 'No messages found in the database' });
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Redis error:', err);
+        return res.status(500).json({ error: 'Failed to fetch from cache' });
+    }
+});
+
+// Add a new endpoint to clear just the message cache
+app.get('/api/cache/reset', async (req, res) => {
+    try {
+      await redisClient.del('cached_message');
+      res.json({ message: 'Cache cleared successfully' });
+    } catch (err) {
+      console.error('Failed to clear cache:', err);
+      res.status(500).json({ error: 'Failed to clear cache' });
+    }
+  });
 
 // GET /api/messages → Fetches all messages from the database
 app.get('/api/messages', (req, res) => {
