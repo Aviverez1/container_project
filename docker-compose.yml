@@ -32,7 +32,7 @@ services:
       MYSQL_DATABASE: appdb
     volumes:
       - db-data:/var/lib/mysql
-      - ./backend/db-init.sql:/docker-entrypoint-initdb.d/db-init.sql  # Add this line
+      - ./backend/db-init.sql:/docker-entrypoint-initdb.d/db-init.sql 
     networks:
       - app-network
 
