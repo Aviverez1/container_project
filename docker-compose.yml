@@ -20,8 +20,8 @@ services:
       - MYSQL_DATABASE=appdb
       - REDIS_HOST=redis
     depends_on:
-      - db
-      - redis
+        db:
+          condition: service_healthy
     networks:
       - app-network
 
@@ -35,6 +35,11 @@ services:
       - ./backend/db-init.sql:/docker-entrypoint-initdb.d/db-init.sql 
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
   redis:
     image: redis:alpine
